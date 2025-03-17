@@ -47,7 +47,7 @@ async function createAdminUser() {
   if (!existingAdmin) {
     const novoUsuario = new Usuario();
     novoUsuario.nome = 'adm';
-    novoUsuario.email = 'adm@anteguemon.com';
+    novoUsuario.email = 'adm@antedeguemon.com';
 
     // Criptografa a senha do administrador
     const saltRounds = 10;

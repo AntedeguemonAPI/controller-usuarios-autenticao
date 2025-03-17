@@ -16,35 +16,45 @@ export class UsuarioService {
     nome: string,
     email: string,
     senha: string,
-    is_adm?: boolean,
-    is_viewer?: boolean
-  ): Promise<Usuario> {
-    // Valida o token JWT
-    const secret = process.env.JWT_SECRET || "defaultSecret";
+    is_adm: boolean,
+    is_viewer?: boolean,
+    id_usuario_criador?: number 
+): Promise<Usuario> {
+    // Verifica se o usuário autenticado é ADM
+    const usuarioCriador = await this.usuarioRepository.findOne({
+      where: { id_usuario: id_usuario_criador } 
+    });
+
+    if (!usuarioCriador || !usuarioCriador.is_adm) {
+      throw new Error("Apenas administradores podem criar novos usuários.");
+    }
+
+    // Valida se o e-mail já existe
+    const usuarioEmail = await this.usuarioRepository.findOne({
+      where: { email },
+    });
+
+    if (usuarioEmail) {
+      throw new Error("E-mail já cadastrado");
+    }
 
     // Criptografa a senha antes de salvar
     const saltRounds = 10;
     const senhaHash = await bdcrypt.hash(senha, saltRounds);
-
-    // Verifica se o e-mail já está cadastrado
-    const usuarioEmail = await this.usuarioRepository.findOne({
-      where: { email },
-    });
-    if (usuarioEmail) {
-      throw new Error("E-mail já cadastrado");
-    }
 
     // Cria um novo usuário
     const novoUsuario = new Usuario();
     novoUsuario.nome = nome;
     novoUsuario.email = email;
     novoUsuario.senha = senhaHash;
-    novoUsuario.is_adm = false; // Por padrão, novos usuários não são administradores
-    novoUsuario.is_viewer = false; // Por padrão, novos usuários não são premium
+    novoUsuario.is_adm = is_adm ?? false;
+    novoUsuario.is_viewer = is_viewer ?? true;
 
     // Salva o novo usuário no banco de dados
     return await this.usuarioRepository.save(novoUsuario);
-  }
+}
+
+
 
   async loginUsuario(email: string, senha: string): Promise<{ token: string, mensagem: string }> {
     // Busca o usuário no banco de dados
@@ -67,19 +77,18 @@ export class UsuarioService {
 
     // Gera o token JWT
     const token = jwt.sign(
-      { id: usuario.id_usuario, nome: usuario.nome, is_adm: usuario.is_adm, is_premium: usuario.is_viewer }, // Payload
+      { id: usuario.id_usuario, nome: usuario.nome, is_adm: usuario.is_adm, is_viewer: usuario.is_viewer }, // Payload
       secret, 
       { expiresIn: "24h" }
     );
 
-    // Define a mensagem com base nos valores de is_adm e is_premium
+    // Define a mensagem com base nos valores de is_adm e is_viewer
     let mensagem = "";
     if (usuario.is_adm) {
       mensagem = "Logou como ADM";
-    } else if (!usuario.is_adm && usuario.is_viewer) {
-      mensagem = "Logou como usuário Público Premium";
-    } else {
-      mensagem = "Logou como usuário Público Comum";
+    } else 
+    {
+      mensagem = "Logou como usuário Viewer";
     }
 
     return { token, mensagem };
@@ -233,6 +242,17 @@ export class UsuarioService {
     return await this.usuarioRepository.findOne({
       where: { id_usuario: id_usuario },
     });
+  }
+
+  async verificarUsuarioPorToken(token: string) {
+    try {
+      const decoded: any = jwt.verify(token, process.env.JWT_SECRET);
+      const usuario = await this.usuarioRepository.findOne({ where: { id_usuario: decoded.id_usuario } });
+
+      return usuario;
+    } catch (error) {
+      throw new Error('Token inválido ou expirado');
+    }
   }
 
   async tornarPremium(id_usuario: number, token: string) {
