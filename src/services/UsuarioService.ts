@@ -1,7 +1,7 @@
 import { AppDataSource } from "../config/database";
 import { Usuario } from "../entity/Usuario";
 import { MoreThan, Repository } from "typeorm";
-import * as bdcrypt from "bcrypt";
+import * as bdcrypt from "bcryptjs";
 import * as jwt from "jsonwebtoken";
 
 export class UsuarioService {

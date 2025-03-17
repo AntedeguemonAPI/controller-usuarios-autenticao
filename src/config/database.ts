@@ -1,12 +1,12 @@
 import { DataSource } from 'typeorm';
 import { Usuario } from '../entity/Usuario';
 import { Client } from 'pg';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 
 async function createDatabase() {
   const client = new Client({
-    host: 'host.docker.internal',
+    host: 'postgres',
     port: 5432,
     user: 'postgres',
     password: 'postgres',
@@ -30,7 +30,7 @@ async function createDatabase() {
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: 'host.docker.internal',
+  host: 'postgres',
   port: 5432,
   username: 'postgres',
   password: 'postgres',
