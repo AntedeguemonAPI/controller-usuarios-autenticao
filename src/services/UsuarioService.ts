@@ -77,7 +77,7 @@ export class UsuarioService {
 
     // Gera o token JWT
     const token = jwt.sign(
-      { id: usuario.id_usuario, nome: usuario.nome, is_adm: usuario.is_adm, is_viewer: usuario.is_viewer }, // Payload
+      { id: usuario.id_usuario, nome: usuario.nome, email: usuario.email, is_adm: usuario.is_adm, is_viewer: usuario.is_viewer }, // Payload
       secret, 
       { expiresIn: "24h" }
     );
