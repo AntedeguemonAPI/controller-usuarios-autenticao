@@ -34,9 +34,8 @@ services:
 
   controller-cadastro-autenticacao:
     build:
-      context: .  # Aponta para o diretório atual
-      dockerfile: Dockerfile.dev  # Especifica o nome do Dockerfile
-    image: briscese/nc-controller-cadastro-autenticacao:develop
+      context: .
+      dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
     networks:
@@ -45,6 +44,7 @@ services:
     depends_on:
       - pgadmin
       - postgres
+
 
 volumes:
   postgres-data:
