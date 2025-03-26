@@ -1,14 +1,14 @@
-import { AppDataSource } from "../config/database";
-import { Usuario } from "../entity/Usuario";
-import { MoreThan, Repository } from "typeorm";
-import * as bdcrypt from "bcryptjs";
-import * as jwt from "jsonwebtoken";
+import { AppDataSource } from "../config/database"
+import { Usuario } from "../entity/Usuario"
+import { MoreThan, Repository } from "typeorm"
+import * as bdcrypt from "bcryptjs"
+import * as jwt from "jsonwebtoken"
 
 export class UsuarioService {
-  private usuarioRepository: Repository<Usuario>;
+  private usuarioRepository: Repository<Usuario>
 
   constructor() {
-    this.usuarioRepository = AppDataSource.getRepository(Usuario);
+    this.usuarioRepository = AppDataSource.getRepository(Usuario)
   }
 
   // Função para criar um usuário
@@ -18,120 +18,137 @@ export class UsuarioService {
     senha: string,
     is_adm: boolean,
     is_viewer?: boolean,
-    id_usuario_criador?: number 
-): Promise<Usuario> {
+    id_usuario_criador?: number
+  ): Promise<Usuario> {
     // Verifica se o usuário autenticado é ADM
     const usuarioCriador = await this.usuarioRepository.findOne({
-      where: { id_usuario: id_usuario_criador } 
-    });
+      where: { id_usuario: id_usuario_criador },
+    })
 
     if (!usuarioCriador || !usuarioCriador.is_adm) {
-      throw new Error("Apenas administradores podem criar novos usuários.");
+      throw new Error("Apenas administradores podem criar novos usuários.")
     }
 
     // Valida se o e-mail já existe
     const usuarioEmail = await this.usuarioRepository.findOne({
       where: { email },
-    });
+    })
 
     if (usuarioEmail) {
-      throw new Error("E-mail já cadastrado");
+      throw new Error("E-mail já cadastrado")
     }
 
     // Criptografa a senha antes de salvar
-    const saltRounds = 10;
-    const senhaHash = await bdcrypt.hash(senha, saltRounds);
+    const saltRounds = 10
+    const senhaHash = await bdcrypt.hash(senha, saltRounds)
 
     // Cria um novo usuário
-    const novoUsuario = new Usuario();
-    novoUsuario.nome = nome;
-    novoUsuario.email = email;
-    novoUsuario.senha = senhaHash;
-    novoUsuario.is_adm = is_adm ?? false;
-    novoUsuario.is_viewer = is_viewer ?? true;
+    const novoUsuario = new Usuario()
+    novoUsuario.nome = nome
+    novoUsuario.email = email
+    novoUsuario.senha = senhaHash
+    novoUsuario.is_adm = is_adm ?? false
+    novoUsuario.is_viewer = is_viewer ?? true
 
     // Salva o novo usuário no banco de dados
-    return await this.usuarioRepository.save(novoUsuario);
-}
+    return await this.usuarioRepository.save(novoUsuario)
+  }
 
-
-
-  async loginUsuario(email: string, senha: string): Promise<{ token: string, mensagem: string }> {
+  async loginUsuario(email: string, senha: string): Promise<{ token: string; mensagem: string }> {
     // Busca o usuário no banco de dados
     const usuario = await this.usuarioRepository.findOne({
       where: { email: email },
-    });
+    })
 
     // Verifica se o usuário existe
     if (!usuario) {
-      throw new Error("E-mail ou senha inválidos!!!");
+      throw new Error("E-mail ou senha inválidos!!!")
     }
 
     // Verifica se a senha está correta
-    const senhaValida = await bdcrypt.compare(senha, usuario.senha);
+    const senhaValida = await bdcrypt.compare(senha, usuario.senha)
     if (!senhaValida) {
-      throw new Error("E-mail ou senha inválidos");
+      throw new Error("E-mail ou senha inválidos")
     }
 
-    const secret = process.env.JWT_SECRET || "defaultSecret";
+    const secret = process.env.JWT_SECRET || "defaultSecret"
 
     // Gera o token JWT
     const token = jwt.sign(
-      { id: usuario.id_usuario, nome: usuario.nome, email: usuario.email, is_adm: usuario.is_adm, is_viewer: usuario.is_viewer }, // Payload
-      secret, 
+      {
+        id: usuario.id_usuario,
+        nome: usuario.nome,
+        email: usuario.email,
+        is_adm: usuario.is_adm,
+        is_viewer: usuario.is_viewer,
+      }, // Payload
+      secret,
       { expiresIn: "24h" }
-    );
+    )
 
     // Define a mensagem com base nos valores de is_adm e is_viewer
-    let mensagem = "";
+    let mensagem = ""
     if (usuario.is_adm) {
-      mensagem = "Logou como ADM";
-    } else 
-    {
-      mensagem = "Logou como usuário Viewer";
+      mensagem = "Logou como ADM"
+    } else {
+      mensagem = "Logou como usuário Viewer"
     }
 
-    return { token, mensagem };
-}
-
+    return { token, mensagem }
+  }
 
   async atualizarUsuario(
     token: string,
     novoNome?: string,
     novaSenha?: string
-  ): Promise<Usuario> {
-    // Verifica o token JWT
-    const secret = process.env.JWT_SECRET || "defaultSecret";
-    let decodedToken;
+  ): Promise<{ usuario: Usuario; token: { token: string } }> {
+    const secret = process.env.JWT_SECRET || "defaultSecret"
+    let decodedToken
 
     try {
-      decodedToken = jwt.verify(token, secret);
+      decodedToken = jwt.verify(token, secret)
     } catch (error) {
-      throw new Error("Token inválido ou expirado");
+      throw new Error("Token inválido ou expirado")
     }
 
-    // Busca o usuário no banco de dados pelo ID contido no token
     const usuario = await this.usuarioRepository.findOne({
       where: { id_usuario: decodedToken.id },
-    });
+    })
 
     if (!usuario) {
-      throw new Error("Usuário não encontrado");
+      throw new Error("Usuário não encontrado")
     }
 
-    // Atualiza o nome, se fornecido
     if (novoNome) {
-      usuario.nome = novoNome;
+      usuario.nome = novoNome
     }
 
-    // Atualiza a senha, se fornecida (e criptografa antes de salvar)
     if (novaSenha) {
-      const saltRounds = 10;
-      usuario.senha = await bdcrypt.hash(novaSenha, saltRounds);
+      const saltRounds = 10
+      usuario.senha = await bdcrypt.hash(novaSenha, saltRounds)
     }
 
-    // Salva as alterações no banco de dados
-    return await this.usuarioRepository.save(usuario);
+    const usuarioAtualizado = await this.usuarioRepository.save(usuario)
+
+    // enviando novo jwt do usuario atualizado
+    const tokenAtualizado = jwt.sign(
+      {
+        id: usuarioAtualizado.id_usuario,
+        nome: usuarioAtualizado.nome,
+        email: usuarioAtualizado.email,
+        is_adm: usuarioAtualizado.is_adm,
+        is_viewer: usuarioAtualizado.is_viewer,
+      },
+      secret,
+      { expiresIn: "24h" }
+    )
+
+    return {
+      usuario: usuarioAtualizado,
+      token: {
+        token: tokenAtualizado,
+      },
+    }
   }
 
   async atualizarUsuarioAdm(
@@ -141,81 +158,81 @@ export class UsuarioService {
     id_usuario?: number
   ): Promise<Usuario> {
     // Verifica o token JWT
-    const secret = process.env.JWT_SECRET || "defaultSecret";
-    let decodedToken;
+    const secret = process.env.JWT_SECRET || "defaultSecret"
+    let decodedToken
 
     try {
-      decodedToken = jwt.verify(token, secret);
+      decodedToken = jwt.verify(token, secret)
     } catch (error) {
-      throw new Error("Token inválido ou expirado");
+      throw new Error("Token inválido ou expirado")
     }
 
     // Busca o usuário no banco de dados pelo ID contido no token
     const usuario = await this.usuarioRepository.findOne({
       where: { id_usuario: id_usuario },
-    });
+    })
 
     if (!usuario) {
-      throw new Error("Usuário não encontrado");
+      throw new Error("Usuário não encontrado")
     }
 
     // Atualiza o nome, se fornecido
     if (novoNome) {
-      usuario.nome = novoNome;
+      usuario.nome = novoNome
     }
 
     // Atualiza a senha, se fornecida (e criptografa antes de salvar)
     if (novaSenha) {
-      const saltRounds = 10;
-      usuario.senha = await bdcrypt.hash(novaSenha, saltRounds);
+      const saltRounds = 10
+      usuario.senha = await bdcrypt.hash(novaSenha, saltRounds)
     }
 
     // Salva as alterações no banco de dados
-    return await this.usuarioRepository.save(usuario);
+    return await this.usuarioRepository.save(usuario)
   }
 
   async deletarUsuario(token: string, id_usuario: number): Promise<void> {
     // Verifica o token JWT
-    const secret = process.env.JWT_SECRET || "defaultSecret";
-    let decodedToken;
+    const secret = process.env.JWT_SECRET || "defaultSecret"
+    let decodedToken
     try {
-      decodedToken = jwt.verify(token, secret);
+      decodedToken = jwt.verify(token, secret)
     } catch (error) {
-      throw new Error("Token inválido ou expirado");
+      throw new Error("Token inválido ou expirado")
     }
 
     // Verifica se o usuário que está tentando deletar o usuário é um administrador
     if (!decodedToken.is_adm) {
-      throw new Error("Somente administradores podem deletar usuários");
+      throw new Error("Somente administradores podem deletar usuários")
     }
 
     // Busca o usuário no banco de dados pelo ID contido no token
     const usuario = await this.usuarioRepository.findOne({
       where: { id_usuario: id_usuario },
-    });
+    })
 
     if (!usuario) {
-      throw new Error("Usuário não encontrado");
+      throw new Error("Usuário não encontrado")
     }
 
     // Deleta o usuário do banco de dados
-    await this.usuarioRepository.delete(usuario.id_usuario);
+    await this.usuarioRepository.delete(usuario.id_usuario)
   }
 
   async listarTodosUsuarios(token: string) {
-    const secret = process.env.JWT_SECRET || "defaultSecret";
-    let decodedToken;
+    const secret = process.env.JWT_SECRET || "defaultSecret"
+    let decodedToken
 
     // Verificação do token JWT
     try {
-      decodedToken = jwt.verify(token, secret);
+      decodedToken = jwt.verify(token, secret)
     } catch (error) {
-      throw new Error("Token inválido ou expirado");
+      throw new Error("Token inválido ou expirado")
     }
 
     // Verifica se o usuário que está tentando deletar o usuário é um administrador
     if (!decodedToken.is_adm) {
-      throw new Error("Somente administradores pode achar todos os usuários");
+      throw new Error("Somente administradores pode achar todos os usuários")
     }
 
     // Retornar usuários com id_usuario > 1
@@ -224,68 +241,66 @@ export class UsuarioService {
       where: {
         id_usuario: MoreThan(1), // Somente usuários com id_usuario > 1
       },
-    });
+    })
 
-    return usuarios;
+    return usuarios
   }
 
   async buscarUsuarioPorId(id_usuario: number, token: string) {
-    const secret = process.env.JWT_SECRET || "defaultSecret";
-    let decodedToken;
+    const secret = process.env.JWT_SECRET || "defaultSecret"
+    let decodedToken
 
     // Verificação do token JWT
     try {
-      decodedToken = jwt.verify(token, secret);
+      decodedToken = jwt.verify(token, secret)
     } catch (error) {
-      throw new Error("Token inválido ou expirado");
+      throw new Error("Token inválido ou expirado")
     }
     return await this.usuarioRepository.findOne({
       where: { id_usuario: id_usuario },
-    });
+    })
   }
 
   async verificarUsuarioPorToken(token: string) {
     try {
-      const decoded: any = jwt.verify(token, process.env.JWT_SECRET);
-      const usuario = await this.usuarioRepository.findOne({ where: { id_usuario: decoded.id_usuario } });
+      const decoded: any = jwt.verify(token, process.env.JWT_SECRET)
+      const usuario = await this.usuarioRepository.findOne({ where: { id_usuario: decoded.id_usuario } })
 
-      return usuario;
+      return usuario
     } catch (error) {
-      throw new Error('Token inválido ou expirado');
+      throw new Error("Token inválido ou expirado")
     }
   }
 
   async tornarPremium(id_usuario: number, token: string) {
-    const secret = process.env.JWT_SECRET || "defaultSecret";
-    let decodedToken;
+    const secret = process.env.JWT_SECRET || "defaultSecret"
+    let decodedToken
 
     try {
-      decodedToken = jwt.verify(token, secret);
+      decodedToken = jwt.verify(token, secret)
     } catch (error) {
-      throw new Error("Token inválido ou expirado");
+      throw new Error("Token inválido ou expirado")
     }
 
     // Verifica se o usuário que está tentando deletar o usuário é um administrador
     if (!decodedToken.is_adm) {
-      throw new Error(
-        "Somente administradores podem transformar usuarios publicos em premium"
-      );
+      throw new Error("Somente administradores podem transformar usuarios publicos em premium")
     }
 
     const usuario = await this.usuarioRepository.findOne({
       where: { id_usuario },
-    });
+    })
 
     if (!usuario) {
-      throw new Error("Usuário não encontrado");
+      throw new Error("Usuário não encontrado")
     }
 
     // Atualiza o campo is_premium para true
-    usuario.is_viewer = true;
-    await this.usuarioRepository.save(usuario);
+    usuario.is_viewer = true
+    await this.usuarioRepository.save(usuario)
 
     return {
       message: `Usuário com id ${id_usuario} foi transformado em premium.`,
-    };
+    }
   }
 }
