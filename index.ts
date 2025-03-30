@@ -20,7 +20,7 @@ AppDataSource.initialize()
   .catch((error) => console.log('Erro ao conectar no banco de dados:', error));
 
 // Adiciona as rotas de usuário
-app.use('/noCloud', usuarioRoutes);
+app.use('/Antedeguemon', usuarioRoutes);
 
 // Configuração do Swagger
 setupSwagger(app);
