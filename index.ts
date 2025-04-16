@@ -3,34 +3,46 @@ import cors from 'cors';
 import usuarioRoutes from './src/routes/usuarioRoutes';
 import { AppDataSource } from './src/config/database';
 import { setupSwagger } from './src/swagger';
+import * as net from 'net';
 
 const app = express();
-const PORT = 3000;
+const DEFAULT_PORT = 3000;
 
-// Middleware para parsear JSON
+// Middleware
 app.use(express.json());
-
 app.use(cors());
 
-// Inicializa a conexão com o banco de dados
+// Inicializa o banco
 AppDataSource.initialize()
   .then(() => {
     console.log('Banco de dados conectado com sucesso');
   })
   .catch((error) => console.log('Erro ao conectar no banco de dados:', error));
 
-// Adiciona as rotas de usuário
+// Rotas
 app.use('/Antedeguemon', usuarioRoutes);
-
-// Configuração do Swagger
 setupSwagger(app);
 
-app.listen(3001, () => {
-  console.log('Servidor rodando em http://localhost:3000');
-  console.log('Documentação disponível em http://localhost:3001/docs');
-});
+// Verifica porta disponível manualmente
+function getAvailablePort(startingPort: number): Promise<number> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.listen(startingPort, () => {
+      server.once('close', () => resolve(startingPort));
+      server.close();
+    });
+    server.on('error', () => {
+      // Porta ocupada, tenta a próxima
+      resolve(getAvailablePort(startingPort + 1));
+    });
+  });
+}
 
-// Inicia o servidor
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-});
+// Start do servidor
+(async () => {
+  const port = await getAvailablePort(DEFAULT_PORT);
+  app.listen(port, () => {
+    console.log(` Servidor rodando na porta ${port}`);
+    console.log(` Documentação disponível em http://localhost:${port}/docs`);
+  });
+})();

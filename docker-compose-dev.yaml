@@ -32,10 +32,9 @@ services:
     depends_on:
       - postgres
 
+
   controller-cadastro-autenticacao:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    image: briscese/nc-controller-cadastro-autenticacao:latest
     ports:
       - "3000:3000"
     networks:
@@ -44,6 +43,7 @@ services:
     depends_on:
       - pgadmin
       - postgres
+
 
 
 volumes:
