@@ -24,7 +24,7 @@ jobs:
       # Construir a imagem
       - name: Build the Docker image
         run: |
-          docker build -t briscese/nc-controller-cadastro-autenticacao:latest -f Dockerfile .
+          docker build -t briscese/nc-controller-cadastro-autenticacao:latest -f ./Dockerfile ./
         
       # Enviar a imagem para o Docker Hub
       - name: Push the Docker image
