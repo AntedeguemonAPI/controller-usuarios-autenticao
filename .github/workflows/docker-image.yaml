@@ -1,0 +1,32 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - dev  # A ação vai acontecer quando você fizer push para a branch 'dev'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout do repositório
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Login no Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}  # Nome de usuário do Docker Hub
+          password: ${{ secrets.DOCKER_PASSWORD }}  # Senha do Docker Hub
+
+      # Construir a imagem
+      - name: Build the Docker image
+        run: |
+          docker build -t briscese/nc-controller-cadastro-autenticacao:latest .
+        
+      # Enviar a imagem para o Docker Hub
+      - name: Push the Docker image
+        run: |
+          docker push briscese/nc-controller-cadastro-autenticacao:latest
