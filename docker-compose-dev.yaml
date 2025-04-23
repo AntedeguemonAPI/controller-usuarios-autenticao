@@ -1,8 +1,7 @@
-networks:
-  rede_microsservicos:
-    external: true
+version: '3.8'
 
 services:
+
   postgres:
     container_name: postgres-container
     image: postgres
@@ -32,6 +31,35 @@ services:
     depends_on:
       - postgres
 
+  pre-processamento:
+    image: briscese/pre-processamento:latest
+    build:
+      context: ../pre-processamento
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    networks:
+      rede_microsservicos:
+        ipv4_address: 172.18.0.10
+    depends_on:
+      - controller-cadastro-autenticacao
+    volumes:
+      - ../pre-processamento/src:/app/src
+
+  banco-de-dados:
+    image: briscese/banco-de-dados:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5003:5003"
+    networks:
+      rede_microsservicos:
+        ipv4_address: 172.18.0.11
+    depends_on:
+      - controller-cadastro-autenticacao
+    env_file:
+      - .env
 
   controller-cadastro-autenticacao:
     image: briscese/nc-controller-cadastro-autenticacao:latest
@@ -44,8 +72,13 @@ services:
       - pgadmin
       - postgres
 
-
-
 volumes:
   postgres-data:
   front-data:
+
+networks:
+  rede_microsservicos:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
